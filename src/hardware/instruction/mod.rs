@@ -10,22 +10,22 @@ use std::process;
 
 #[derive(Debug)]
 pub enum OpCode {
-    BR = 0, // branch
-    ADD,    // add
-    LD,     // load
-    ST,     // store
-    JSR,    // jump register
-    AND,    // bitwise and
-    LDR,    // load register
-    STR,    // store register
-    RTI,    // unused
-    NOT,    // bitwise not
-    LDI,    // load indirect
-    STI,    // store indirect
-    JMP,    // jump
-    RES,    // reserved (unused)
-    LEA,    // load effective address
-    TRAP,   // execute trap
+    BR,   // branch
+    ADD,  // add
+    LD,   // load
+    ST,   // store
+    JSR,  // jump register
+    AND,  // bitwise and
+    LDR,  // load register
+    STR,  // store register
+    RTI,  // unused
+    NOT,  // bitwise not
+    LDI,  // load indirect
+    STI,  // store indirect
+    JMP,  // jump
+    RES,  // reserved (unused)
+    LEA,  // load effective address
+    TRAP, // execute trap
 }
 
 // TRAP Codes
@@ -43,54 +43,74 @@ pub enum TrapCode {
     /// halt the program
     Halt = 0x25,
 }
+impl TryFrom<u16> for TrapCode {
+    type Error = ();
 
-pub fn execute_instruction(instr: u16, vm: &mut VM) {
-    // Extract OPCode from the instruction
-    let op_code = get_op_code(&instr);
-
-    // Match OPCode and execute instruction
-    match op_code {
-        Some(OpCode::ADD) => add(instr, vm),
-        Some(OpCode::AND) => and(instr, vm),
-        Some(OpCode::NOT) => not(instr, vm),
-        Some(OpCode::BR) => br(instr, vm),
-        Some(OpCode::JMP) => jmp(instr, vm),
-        Some(OpCode::JSR) => jsr(instr, vm),
-        Some(OpCode::LD) => ld(instr, vm),
-        Some(OpCode::LDI) => ldi(instr, vm),
-        Some(OpCode::LDR) => ldr(instr, vm),
-        Some(OpCode::LEA) => lea(instr, vm),
-        Some(OpCode::ST) => st(instr, vm),
-        Some(OpCode::STI) => sti(instr, vm),
-        Some(OpCode::STR) => str(instr, vm),
-        Some(OpCode::TRAP) => trap(instr, vm),
-        _ => {}
+    fn try_from(value: u16) -> Result<Self, Self::Error> {
+        match value {
+            0x20 => Ok(TrapCode::Getc),
+            0x21 => Ok(TrapCode::Out),
+            0x22 => Ok(TrapCode::Puts),
+            0x23 => Ok(TrapCode::In),
+            0x24 => Ok(TrapCode::Putsp),
+            0x25 => Ok(TrapCode::Halt),
+            _ => Err(()),
+        }
     }
 }
 
-// Each instruction is 16 bits long, with the left 4 bits storing the opcode.
-// The rest of the bits are used to store the parameters.
-// To extract left 4 bits out of the instruction, we'll use a right bit shift `>>`
-// operator and shift to the right the first 4 bits 12 positions.
-pub fn get_op_code(instruction: &u16) -> Option<OpCode> {
-    match instruction >> 12 {
-        0 => Some(OpCode::BR),
-        1 => Some(OpCode::ADD),
-        2 => Some(OpCode::LD),
-        3 => Some(OpCode::ST),
-        4 => Some(OpCode::JSR),
-        5 => Some(OpCode::AND),
-        6 => Some(OpCode::LDR),
-        7 => Some(OpCode::STR),
-        8 => Some(OpCode::RTI),
-        9 => Some(OpCode::NOT),
-        10 => Some(OpCode::LDI),
-        11 => Some(OpCode::STI),
-        12 => Some(OpCode::JMP),
-        13 => Some(OpCode::RES),
-        14 => Some(OpCode::LEA),
-        15 => Some(OpCode::TRAP),
-        _ => None,
+pub fn execute_instruction(instr: u16, vm: &mut VM) {
+    // Extract OPCode from the instruction
+    match OpCode::try_from(instr) {
+        Err(_) => {}
+        // Match OPCode and execute instruction
+        Ok(op_code) => match op_code {
+            OpCode::ADD => add(instr, vm),
+            OpCode::AND => and(instr, vm),
+            OpCode::NOT => not(instr, vm),
+            OpCode::BR => br(instr, vm),
+            OpCode::JMP => jmp(instr, vm),
+            OpCode::JSR => jsr(instr, vm),
+            OpCode::LD => ld(instr, vm),
+            OpCode::LDI => ldi(instr, vm),
+            OpCode::LDR => ldr(instr, vm),
+            OpCode::LEA => lea(instr, vm),
+            OpCode::ST => st(instr, vm),
+            OpCode::STI => sti(instr, vm),
+            OpCode::STR => str(instr, vm),
+            OpCode::TRAP => trap(instr, vm),
+            OpCode::RTI => {}
+            OpCode::RES => {}
+        },
+    }
+}
+
+impl TryFrom<u16> for OpCode {
+    type Error = ();
+    fn try_from(instruction: u16) -> Result<Self, Self::Error> {
+        // Each instruction is 16 bits long, with the left 4 bits storing the opcode.
+        // The rest of the bits are used to store the parameters.
+        // To extract left 4 bits out of the instruction, we'll use a right bit shift `>>`
+        // operator and shift to the right the first 4 bits 12 positions.
+        match instruction >> 12 {
+            0 => Ok(OpCode::BR),
+            1 => Ok(OpCode::ADD),
+            2 => Ok(OpCode::LD),
+            3 => Ok(OpCode::ST),
+            4 => Ok(OpCode::JSR),
+            5 => Ok(OpCode::AND),
+            6 => Ok(OpCode::LDR),
+            7 => Ok(OpCode::STR),
+            8 => Ok(OpCode::RTI),
+            9 => Ok(OpCode::NOT),
+            10 => Ok(OpCode::LDI),
+            11 => Ok(OpCode::STI),
+            12 => Ok(OpCode::JMP),
+            13 => Ok(OpCode::RES),
+            14 => Ok(OpCode::LEA),
+            15 => Ok(OpCode::TRAP),
+            _ => Err(()),
+        }
     }
 }
 
@@ -492,66 +512,66 @@ pub fn str(instruction: u16, vm: &mut VM) {
 /// Then the PC is loaded with the starting address of the system call specified by trap vector8.
 /// The starting address is contained in the memory location whose address is obtained by zero-extending trap vector8 to 16 bits.
 pub fn trap(instruction: u16, vm: &mut VM) {
-    match instruction & 0xFF {
-        0x20 => {
-            // Get character
-            let mut buffer = [0; 1];
-            std::io::stdin().read_exact(&mut buffer).unwrap();
-            vm.registers.r0 = buffer[0] as u16;
-        }
-        0x21 => {
-            // Write out character
-            let c = vm.registers.r0 as u8;
-            print!("{}", c as char);
-            // println!("[*] OUT");
-        }
-        0x22 => {
-            // Puts
-            let mut index = vm.registers.r0;
-            let mut c = vm.read_memory(index);
-            while c != 0x0000 {
-                print!("{}", (c as u8) as char);
-                index += 1;
-                c = vm.read_memory(index);
+    match TrapCode::try_from(instruction & 0xFF) {
+        Ok(trap_code) => match trap_code {
+            TrapCode::Getc => {
+                // Get character
+                let mut buffer = [0; 1];
+                std::io::stdin().read_exact(&mut buffer).unwrap();
+                vm.registers.r0 = buffer[0] as u16;
             }
-            io::stdout().flush().expect("failed to flush");
-        }
-        0x23 => {
-            // In, Print a prompt on the screen and read a single character from the keyboard. The character is echoed onto the console monitor, and its ASCII code is copied into R0.The high eight bits of R0 are cleared.
-            print!("Enter a  character : ");
-            io::stdout().flush().expect("failed to flush");
-            let char = std::io::stdin()
-                .bytes()
-                .next()
-                .and_then(|result| result.ok())
-                .map(|byte| byte as u16)
-                .unwrap();
-            vm.registers.update(0, char);
-        }
-        0x24 => {
-            // Putsp
-            let mut index = vm.registers.r0;
-            let mut c = vm.read_memory(index);
-            while c != 0x0000 {
-                let c1 = ((c & 0xFF) as u8) as char;
-                print!("{}", c1);
-                let c2 = ((c >> 8) as u8) as char;
-                if c2 != '\0' {
-                    print!("{}", c2);
+            TrapCode::Out => {
+                // Write out character
+                let c = vm.registers.r0 as u8;
+                print!("{}", c as char);
+                // println!("[*] OUT");
+            }
+            TrapCode::Puts => {
+                // Puts
+                let mut index = vm.registers.r0;
+                let mut c = vm.read_memory(index);
+                while c != 0x0000 {
+                    print!("{}", (c as u8) as char);
+                    index += 1;
+                    c = vm.read_memory(index);
                 }
-                index += 1;
-                c = vm.read_memory(index);
+                io::stdout().flush().expect("failed to flush");
             }
-            io::stdout().flush().expect("failed to flush");
-        }
-        0x25 => {
-            println!("HALT detected");
-            io::stdout().flush().expect("failed to flush");
-            process::exit(1);
-        }
-        _ => {
-            process::exit(1);
-        }
+            TrapCode::In => {
+                // In, Print a prompt on the screen and read a single character from the keyboard. The character is echoed onto the console monitor, and its ASCII code is copied into R0.The high eight bits of R0 are cleared.
+                print!("Enter a  character : ");
+                io::stdout().flush().expect("failed to flush");
+                let char = std::io::stdin()
+                    .bytes()
+                    .next()
+                    .and_then(|result| result.ok())
+                    .map(|byte| byte as u16)
+                    .unwrap();
+                vm.registers.update(0, char);
+            }
+            TrapCode::Putsp => {
+                // Putsp
+                let mut index = vm.registers.r0;
+                let mut c = vm.read_memory(index);
+                while c != 0x0000 {
+                    let c1 = ((c & 0xFF) as u8) as char;
+                    print!("{}", c1);
+                    let c2 = ((c >> 8) as u8) as char;
+                    if c2 != '\0' {
+                        print!("{}", c2);
+                    }
+                    index += 1;
+                    c = vm.read_memory(index);
+                }
+                io::stdout().flush().expect("failed to flush");
+            }
+            TrapCode::Halt => {
+                println!("HALT detected");
+                io::stdout().flush().expect("failed to flush");
+                process::exit(1);
+            }
+        },
+        Err(_) => process::exit(1),
     }
 }
 

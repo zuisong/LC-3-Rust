@@ -67,9 +67,10 @@ impl Registers {
 
     // Update the condition register based on the value that's inside the register `r`.
     pub fn update_r_cond_register(&mut self, r: u16) {
-        if self.get(r) == 0 {
+        let value = self.get(r);
+        if value == 0 {
             self.update(9, ConditionFlag::ZRO as u16);
-        } else if (self.get(r) >> 15) != 0 {
+        } else if (value >> 15) != 0 {
             // a 1 in the left-most bit indicates negative
             self.update(9, ConditionFlag::NEG as u16);
         } else {

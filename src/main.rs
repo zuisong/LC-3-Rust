@@ -8,17 +8,6 @@ use termios::*;
 use byteorder::{BigEndian, ReadBytesExt};
 
 use std::{fs::File, io::BufReader};
-use structopt::StructOpt;
-
-#[derive(StructOpt)]
-struct Cli {
-    /// The path to the file to read
-    #[structopt(parse(from_os_str))]
-    path: std::path::PathBuf,
-
-    #[structopt(long)]
-    print_asm: bool, // Future feature
-}
 
 fn main() {
     // Some tricks to make the VM's terminal be interactive
@@ -35,10 +24,10 @@ fn main() {
 
     // Actual VM logic code
     let mut vm = VM::new();
+    let args: Vec<String> = std::env::args().collect();
+    let path = &args.get(1).expect("please input file path");
 
-    let cli = Cli::from_args();
-
-    let f = File::open(cli.path).expect("couldn't open file");
+    let f = File::open(path).expect("couldn't open file");
     let mut f = BufReader::new(f);
 
     // Note how we're using `read_u16` _and_ BigEndian to read the binary file.
